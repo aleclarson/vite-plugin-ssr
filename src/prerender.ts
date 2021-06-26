@@ -2,6 +2,7 @@ import './page-files/setup.node'
 import fs from 'fs'
 const { writeFile, mkdir } = fs.promises
 import { join, sep, dirname } from 'path'
+import * as vite from 'vite'
 import { getFilesystemRoute, getPageIds, isErrorPage, isStaticRoute, loadPageRoutes, route } from './route.shared'
 import { assert, assertUsage, assertWarning, hasProp, getFileUrl, moduleExists, isPlainObject, castProp } from './utils'
 import { setSsrEnv } from './ssrEnv.node'
@@ -55,7 +56,10 @@ async function prerender({
   setSsrEnv({
     isProduction: true,
     root,
-    viteDevServer: undefined,
+    viteDevServer: await vite.createServer({
+      mode: 'production',
+      root
+    }),
     baseUrl
   })
 

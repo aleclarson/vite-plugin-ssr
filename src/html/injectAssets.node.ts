@@ -181,10 +181,9 @@ async function injectAssets_internal(
 
 async function applyViteHtmlTransform(htmlString: string, urlNormalized: string): Promise<string> {
   const ssrEnv = getSsrEnv()
-  if (ssrEnv.isProduction) {
-    return htmlString
+  if (ssrEnv.viteDevServer) {
+    htmlString = await ssrEnv.viteDevServer.transformIndexHtml(urlNormalized, htmlString)
   }
-  htmlString = await ssrEnv.viteDevServer.transformIndexHtml(urlNormalized, htmlString)
   return htmlString
 }
 
