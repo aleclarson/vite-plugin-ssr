@@ -13,7 +13,7 @@ type SsrEnv =
     }
   | {
       isProduction: true
-      viteDevServer?: ViteDevServer
+      viteDevServer: undefined
       root?: string
       baseUrl: string
     }
