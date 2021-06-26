@@ -1,13 +1,20 @@
 import './page-files/setup.node'
 import fs from 'fs'
 const { writeFile, mkdir } = fs.promises
-import { join, sep, dirname } from 'path'
+import { join, sep, dirname, resolve } from 'path'
 import { getFilesystemRoute, getPageIds, isErrorPage, isStaticRoute, loadPageRoutes, route } from './route.shared'
 import { assert, assertUsage, assertWarning, hasProp, getFileUrl, moduleExists, isPlainObject, castProp } from './utils'
 import { setSsrEnv } from './ssrEnv.node'
 import { getPageServerFile, prerenderPage, renderStatic404Page } from './renderPage.node'
 import { blue, green, gray, cyan } from 'kolorist'
 import { version } from './package.json'
+import * as vite from 'vite'
+
+declare module 'vite' {
+  export interface InternalConfig {
+    isPreRender?: boolean
+  }
+}
 
 export { prerender }
 
@@ -182,6 +189,57 @@ async function prerender({
     }
   }
 
+  const ID_PREFIX = '/@ssr/'
+
+  const htmlDocumentMap: { [pageId: string]: HtmlDocument } = {}
+  htmlDocuments.forEach((page) => {
+    let pageId = page.url
+    if (pageId.endsWith('/')) {
+      pageId += '__index'
+    }
+    pageId = ID_PREFIX + pageId.slice(1)
+    htmlDocumentMap[pageId] = page
+  })
+
+  const prerenderPlugin: vite.Plugin = {
+    name: 'vite-plugin-ssr:prerender',
+    enforce: 'pre',
+    config: () => ({
+      isPreRender: true
+    }),
+    configResolved(config) {
+      const outDir = resolve(config.root, config.build.outDir)
+      const [preHooks, postHooks] = vite.resolveHtmlTransforms(config.plugins)
+      const htmlTransforms = [...preHooks, ...postHooks]
+      if (htmlTransforms.length)
+        this.transform = function (code, id) {
+          if (id.startsWith(ID_PREFIX)) {
+            const page = htmlDocumentMap[id]
+            return vite.applyHtmlTransforms(code, htmlTransforms, {
+              filename: getPageFilename(page, outDir),
+              path: page.url
+            })
+          }
+        }
+    },
+    resolveId: (id) => (id.startsWith(ID_PREFIX) ? id : null),
+    load(id) {
+      if (id.startsWith(ID_PREFIX)) {
+        return htmlDocumentMap[id].htmlDocument
+      }
+    }
+  }
+
+  const viteResult = await vite.build({
+    root,
+    build: {
+      rollupOptions: {
+        input: Object.keys(htmlDocumentMap)
+      }
+    },
+    plugins: [prerenderPlugin]
+  })
+
   console.log(`${green(`✓`)} ${htmlDocuments.length} HTML documents pre-rendered.`)
 
   // `htmlDocuments.length` can be very big; to avoid `EMFILE, too many open files` we don't parallelize the writing
@@ -201,6 +259,12 @@ async function writeHtmlDocument(
     writeJobs.push(write(url, '.pageContext.json', pageContextSerialized, root, doNotCreateExtraDirectory))
   }
   await Promise.all(writeJobs)
+}
+
+function getPageFilename(page: HtmlDocument, outDir: string) {
+  const fileUrl = getFileUrl(page.url, '.html', page.doNotCreateExtraDirectory)
+  const filePathRelative = fileUrl.slice(1).split('/').join(sep)
+  return join(outDir, 'client', filePathRelative)
 }
 
 async function write(

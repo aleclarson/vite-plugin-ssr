@@ -12,25 +12,30 @@ import * as glob from 'fast-glob'
 export { build }
 
 function build(): Plugin {
-  let isSsrBuild: boolean | undefined
   return {
     name: 'vite-plugin-ssr:build',
     apply: 'build',
     config: (config) => {
-      isSsrBuild = isSSR(config)
-      return {
-        build: {
-          outDir: getOutDir(config),
-          manifest: true,
-          rollupOptions: { input: entryPoints(config) },
-          polyfillDynamicImport: false
-        },
-        ssr: { external: ['vite-plugin-ssr'] }
-      }
+      if (!config.isPreRender)
+        return {
+          build: {
+            outDir: getOutDir(config),
+            manifest: true,
+            rollupOptions: { input: entryPoints(config) },
+            polyfillDynamicImport: false
+          },
+          ssr: { external: ['vite-plugin-ssr'] }
+        }
     },
-    transform: (_src, id) => {
-      assert(isSsrBuild === true || isSsrBuild === false)
-      return removeClientCode(isSsrBuild, id)
+    configResolved(config) {
+      if (!isSSR(config)) return
+      this.transform = function (_, id) {
+        if (id.includes('.page.client.'))
+          return {
+            code: `throw new Error('[vite-plugin-ssr][Wrong Usage] File ${id} should not be loaded in Node.js');`,
+            map: null
+          }
+      }
     }
   }
 }
@@ -38,12 +43,6 @@ function build(): Plugin {
 function removeClientCode(isSsrBuild: boolean, id: string) {
   if (!isSsrBuild) {
     return
-  }
-  if (id.includes('.page.client.')) {
-    return {
-      code: `throw new Error('[vite-plugin-ssr][Wrong Usage] File ${id} should not be loaded in Node.js');`,
-      map: null
-    }
   }
 }
 
