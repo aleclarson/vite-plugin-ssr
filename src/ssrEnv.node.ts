@@ -1,4 +1,4 @@
-import { ViteDevServer, ResolvedConfig as ViteConfig } from 'vite'
+import { ViteDevServer } from 'vite'
 
 export { setSsrEnv }
 export { getSsrEnv }
@@ -8,14 +8,12 @@ type SsrEnv =
   | {
       isProduction: false
       viteDevServer: ViteDevServer
-      viteConfig?: undefined
       root: string
       baseUrl: string
     }
   | {
       isProduction: true
-      viteDevServer?: undefined
-      viteConfig?: ViteConfig
+      viteDevServer: undefined
       root?: string
       baseUrl: string
     }

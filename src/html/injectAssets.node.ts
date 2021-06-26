@@ -5,7 +5,6 @@ import { getViteManifest, ViteManifest } from '../getViteManifest.node'
 import { prependBaseUrl } from '../baseUrlHandling'
 import devalue from 'devalue'
 import { isAbsolute } from 'path'
-import { resolveHtmlTransforms, applyHtmlTransforms } from 'vite'
 import { inferMediaType, MediaType } from './inferMediaType'
 
 export { injectAssets }
@@ -182,15 +181,10 @@ async function injectAssets_internal(
 
 async function applyViteHtmlTransform(htmlString: string, urlNormalized: string): Promise<string> {
   const ssrEnv = getSsrEnv()
-  if (!ssrEnv.isProduction) {
-    htmlString = await ssrEnv.viteDevServer.transformIndexHtml(urlNormalized, htmlString)
-  } else if (ssrEnv.viteConfig) {
-    const [preHooks, postHooks] = resolveHtmlTransforms(ssrEnv.viteConfig.plugins)
-    htmlString = await applyHtmlTransforms(htmlString, [...preHooks, ...postHooks], {
-      path: urlNormalized,
-      filename: ''
-    })
+  if (ssrEnv.isProduction) {
+    return htmlString
   }
+  htmlString = await ssrEnv.viteDevServer.transformIndexHtml(urlNormalized, htmlString)
   return htmlString
 }
 

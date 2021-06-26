@@ -8,7 +8,6 @@ import { setSsrEnv } from './ssrEnv.node'
 import { getPageServerFile, prerenderPage, renderStatic404Page } from './renderPage.node'
 import { blue, green, gray, cyan } from 'kolorist'
 import { version } from './package.json'
-import * as vite from 'vite'
 
 export { prerender }
 
@@ -56,7 +55,7 @@ async function prerender({
   setSsrEnv({
     isProduction: true,
     root,
-    viteConfig: await vite.resolveConfig({ root }, 'build', 'production'),
+    viteDevServer: undefined,
     baseUrl
   })
 
