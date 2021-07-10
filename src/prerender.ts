@@ -183,11 +183,16 @@ async function prerender({
   }
 
   console.log(`${green(`✓`)} ${htmlDocuments.length} HTML documents pre-rendered.`)
-
-  // `htmlDocuments.length` can be very big; to avoid `EMFILE, too many open files` we don't parallelize the writing
-  for (const htmlDoc of htmlDocuments) {
-    await writeHtmlDocument(htmlDoc, root)
-  }
+  return new Promise<string[]>(async (resolve) => {
+    const filePaths: string[] = []
+    for (const htmlDoc of htmlDocuments) {
+      // `htmlDocuments.length` can be very big; to avoid `EMFILE, too many open files` we don't parallelize the writing
+      for (const filePath of await writeHtmlDocument(htmlDoc, root)) {
+        filePaths.push(filePath)
+      }
+    }
+    resolve(filePaths)
+  })
 }
 
 async function writeHtmlDocument(
@@ -200,7 +205,7 @@ async function writeHtmlDocument(
   if (pageContextSerialized !== null) {
     writeJobs.push(write(url, '.pageContext.json', pageContextSerialized, root, doNotCreateExtraDirectory))
   }
-  await Promise.all(writeJobs)
+  return Promise.all(writeJobs)
 }
 
 async function write(
@@ -218,6 +223,7 @@ async function write(
   await mkdirp(dirname(filePath))
   await writeFile(filePath, fileContent)
   console.log(`${gray(join('dist', 'client') + sep)}${blue(filePathRelative)}`)
+  return filePath
 }
 
 function mkdirp(path: string): Promise<string | undefined> {
