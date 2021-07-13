@@ -1,3 +1,4 @@
+import fs from 'fs'
 import { getSsrEnv } from './ssrEnv.node'
 import { assert } from './utils'
 
@@ -32,22 +33,25 @@ function getViteManifest(): {
   const clientManifestPath = `${root}/dist/client/manifest.json`
   const serverManifestPath = `${root}/dist/server/manifest.json`
 
-  if (!clientManifest) {
-    try {
-      clientManifest = require(clientManifestPath)
-    } catch (err) {}
-  }
-  if (!serverManifest) {
-    try {
-      serverManifest = require(serverManifestPath)
-    } catch (err) {}
-  }
+  clientManifest ??= readJson(clientManifestPath)
+  serverManifest ??= readJson(serverManifestPath)
 
   return {
     clientManifest,
     serverManifest,
     clientManifestPath,
     serverManifestPath
+  }
+}
+
+function readJson(filePath: string) {
+  try {
+    const text = fs.readFileSync(filePath, 'utf8')
+    return JSON.parse(text)
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      throw error
+    }
   }
 }
 
