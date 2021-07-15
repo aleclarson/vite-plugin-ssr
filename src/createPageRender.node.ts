@@ -9,8 +9,6 @@ import { isPageFilesSet } from './page-files/getPageFiles.shared'
 
 export { createPageRender }
 
-let alreadyCalled = false
-
 type RenderPage = typeof renderPage
 
 function createPageRender({
@@ -24,9 +22,6 @@ function createPageRender({
   isProduction?: boolean
   base?: string
 }): RenderPage {
-  assertUsage(!alreadyCalled, '`createPageRender()` should be called only once.')
-  alreadyCalled = true
-
   const ssrEnv = { viteDevServer, root, isProduction, baseUrl: base }
   assertArguments(ssrEnv, Array.from(arguments))
   setSsrEnv(ssrEnv)
