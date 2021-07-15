@@ -1,6 +1,7 @@
 import './page-files/setup.node'
 export { resolvePages } from './prerender'
 export { createPageRender } from './createPageRender.node'
+export { ViteManifest } from './getViteManifest.node'
 export { html } from './html/index.node'
 
 import { setViteManifest } from './getViteManifest.node'
