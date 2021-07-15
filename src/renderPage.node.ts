@@ -28,6 +28,7 @@ export { renderPage }
 export { prerenderPage }
 export { renderStatic404Page }
 export { getPageServerFile }
+export { getPageClientFile }
 
 async function renderPage(
   pageContext: { url: string } & Record<string, unknown>

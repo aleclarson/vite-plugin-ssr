@@ -5,17 +5,82 @@ import { join, sep, dirname } from 'path'
 import { getFilesystemRoute, getPageIds, isErrorPage, isStaticRoute, loadPageRoutes, route } from './route.shared'
 import { assert, assertUsage, assertWarning, hasProp, getFileUrl, moduleExists, isPlainObject, castProp } from './utils'
 import { setSsrEnv } from './ssrEnv.node'
-import { getPageServerFile, prerenderPage, renderStatic404Page } from './renderPage.node'
+import { getPageClientFile, getPageServerFile, prerenderPage, renderStatic404Page } from './renderPage.node'
 import { blue, green, gray, cyan } from 'kolorist'
 import { version } from './package.json'
 
 export { prerender }
+export { resolvePages }
 
 type HtmlDocument = {
   url: string
   htmlDocument: string
   pageContextSerialized: string | null
   doNotCreateExtraDirectory?: true
+}
+
+type ResolvedPage = {
+  url: string
+  htmlPath: string
+  scriptPath: string
+}
+
+async function resolvePages(): Promise<ResolvedPage[]> {
+  const allPageIds = await getPageIds()
+  const pageRoutes = await loadPageRoutes()
+
+  const pages: ResolvedPage[] = []
+  const addPage = async (url: string, scriptPath: string) => {
+    const fileUrl = getFileUrl(url, '.html', true)
+    assert(fileUrl.startsWith('/'))
+    const filePathRelative = fileUrl.slice(1).split('/').join(sep)
+    assert(!filePathRelative.startsWith(sep))
+    pages.push({
+      url,
+      htmlPath: filePathRelative,
+      scriptPath
+    })
+  }
+
+  await Promise.all(
+    allPageIds.map(async (pageId) => {
+      const pageClientFile = await getPageClientFile(pageId)
+      if (isErrorPage(pageId)) {
+        return pages.push({
+          url: '/_404',
+          htmlPath: '404.html',
+          scriptPath: pageClientFile
+        })
+      }
+      const pageServerFile = await getPageServerFile(pageId)
+      if (pageServerFile) {
+        const { fileExports, filePath } = pageServerFile
+        const prerenderFunction = fileExports.prerender
+        if (prerenderFunction) {
+          const prerenderSourceFile = filePath
+          assert(prerenderSourceFile)
+
+          const prerenderResult = await prerenderFunction()
+          const pages = normalizePrerenderResult(prerenderResult, prerenderSourceFile)
+
+          return pages.forEach(({ url }) => {
+            assert(typeof url === 'string')
+            addPage(url, pageClientFile)
+          })
+        }
+      }
+      if (pageId in pageRoutes) {
+        const { pageRoute: url } = pageRoutes[pageId]
+        assert(typeof url === 'string' && isStaticRoute(url))
+        addPage(url, pageClientFile)
+      } else {
+        const url = getFilesystemRoute(pageId, allPageIds)
+        addPage(url, pageClientFile)
+      }
+    })
+  )
+
+  return pages
 }
 
 /**
