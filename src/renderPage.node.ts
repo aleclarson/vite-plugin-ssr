@@ -92,7 +92,7 @@ async function renderPage(
   // *** Handle 404 ***
   let statusCode: 200 | 404
   if (!routeResult) {
-    if (!pageContext._isPageContextRequest) {
+    if (!pageContext._isPageContextRequest && pageContext.url !== '/_404') {
       await warn404(pageContext.urlNormalized, allPageIds)
     }
     const errorPageId = getErrorPageId(allPageIds)
