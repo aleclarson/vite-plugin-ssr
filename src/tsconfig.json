@@ -1,4 +1,5 @@
 {
+  "exclude": ["vendor", "dist"],
   "compilerOptions": {
     "outDir": "./dist/",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
