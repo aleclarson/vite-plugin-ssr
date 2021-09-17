@@ -9,7 +9,7 @@ function dev(): Plugin {
     config: () => ({
       ssr: { external: ['vite-plugin-ssr'] },
       optimizeDeps: {
-        entries: ['**/*.page.*([a-zA-Z0-9])', '**/*.page.client.*([a-zA-Z0-9])']
+        entries: ['pages/**/*.page.*([a-zA-Z0-9])', 'pages/**/*.page.client.*([a-zA-Z0-9])']
       }
     })
   }
